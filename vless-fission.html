@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Proxy Toolkit · VLESS 裂变</title>
+<title>Proxy Toolkit · VLESS / VMESS 裂变</title>
 <style>
   :root{
     --bg: #0a0e12;
@@ -194,6 +194,19 @@
 
   code{background:#1a2538;padding:1px 6px;border-radius:4px;font-size:0.85em;font-family:var(--mono);}
 
+  .proto-badge{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:0.5px;
+    padding:2px 8px;
+    border-radius:4px;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+  .proto-vless{background:rgba(79,216,196,0.15);color:var(--accent);border:1px solid var(--accent-dim);}
+  .proto-vmess{background:rgba(232,169,68,0.15);color:var(--accent-2);border:1px solid #8a6528;}
+
   @media (max-width:640px){
     .actions button{flex:1;justify-content:center;}
   }
@@ -213,8 +226,8 @@
       <circle cx="33" cy="37" r="3" fill="#e8a944"/>
     </svg>
     <div>
-      <h1>VLESS <span class="dim">裂变</span></h1>
-      <p class="subtitle">保留 UUID 与加密参数，批量替换连接地址与端口 · 纯前端本地运行</p>
+      <h1>VLESS / VMESS <span class="dim">裂变</span></h1>
+      <p class="subtitle">保留 UUID 与加密参数，批量替换连接地址与端口 · 纯前端本地运行 · 支持 vless:// 与 vmess://</p>
     </div>
   </header>
 
@@ -223,10 +236,13 @@
   <div class="grid">
     <div class="panel">
       <h2>基础节点 <span class="tag">01 · 输入</span></h2>
-      <p class="hint">粘贴一条完整的 vless:// 链接，工具会保留其中的 UUID、加密参数（security / sni / type / path / host 等），只替换连接地址与端口。</p>
-      <textarea id="vf-baseLink" placeholder="vless://uuid@原始域名:443?encryption=none&security=tls&sni=example.com&type=ws&host=example.com&path=%2F#原始备注" style="height:70px;"></textarea>
+      <p class="hint">粘贴一条完整的 <code>vless://</code> 或 <code>vmess://</code> 链接。工具会保留其中的 UUID、加密参数（security / sni / type / path / host / tls 等），只替换连接地址与端口。</p>
+      <textarea id="vf-baseLink" placeholder="vless://uuid@原始域名:443?encryption=none&security=tls&sni=example.com&type=ws&host=example.com&path=%2F#原始备注
+或
+vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogImVnIiwNCiAgImFkZCI6ICJzaG9waWZ5LmNvbSIsDQogICJwb3J0IjogIjQ0MyIsDQogICJpZCI6ICIxYTMwOGUxZC00MTBhLTQ5M2ItYWFhMy00ZDE3NDI3NGQ0NTYiLA0KICAiYWlkIjogIjAiLA0KICAic2N5IjogIm5vbmUiLA0KICAibmV0IjogIndzIiwNCiAgInR5cGUiOiAibm9uZSIsDQogICJob3N0IjogInlvdXIuY29tIiwNCiAgInBhdGgiOiAiL3ZtZXNzLWFyZ28/ZWQ9MjU2MCIsDQogICJ0bHMiOiAidGxzIiwNCiAgInNuaSI6ICJ5b3VyLmNvbSIsDQogICJhbHBuIjogIiIsDQogICJmcCI6ICJjaHJvbWUiLA0KICAiaW5zZWN1cmUiOiAiMCIsDQogICJ2Y24iOiAiIiwNCiAgInBjcyI6ICIiDQp9" style="height:90px;"></textarea>
       <div id="vf-parsed" class="parsed">
-        <div class="row"><span class="k">UUID</span><span class="v" id="vf-p-uuid">-</span></div>
+        <div class="row"><span class="k">协议</span><span class="v" id="vf-p-proto">-</span></div>
+        <div class="row"><span class="k">UUID / ID</span><span class="v" id="vf-p-uuid">-</span></div>
         <div class="row"><span class="k">原始地址</span><span class="v" id="vf-p-host">-</span></div>
         <div class="row"><span class="k">原始端口</span><span class="v" id="vf-p-port">-</span></div>
         <div class="row"><span class="k">安全层</span><span class="v" id="vf-p-security">-</span></div>
@@ -273,7 +289,7 @@ cf.example.com:8443#香港优选
   </div>
   <div class="panel output-panel">
     <h2>生成结果 <span class="tag">03 · 输出</span></h2>
-    <textarea id="vf-output" placeholder="生成的 vless 节点将显示在这里，每行一条…" readonly></textarea>
+    <textarea id="vf-output" placeholder="生成的 vless / vmess 节点将显示在这里，每行一条…" readonly></textarea>
     <div class="output-footer">
       <span class="count-badge" id="vf-outCount"></span>
       <div style="display:flex;gap:10px;">
@@ -308,9 +324,26 @@ function showToast(msg){
   const outCount = document.getElementById('vf-outCount');
   let parsedBase = null;
 
+  // ---------- Base64 helpers (UTF-8 safe) ----------
+  function b64Encode(str){
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin);
+  }
+  function b64Decode(str){
+    // tolerate URL-safe base64 and missing padding
+    str = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (str.length % 4) str += '=';
+    const bin = atob(str);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  // ---------- VLESS parse / build ----------
   function parseVless(link){
     link = (link || '').trim();
-    if (!link) throw new Error('请输入 vless 链接');
     if (!link.toLowerCase().startsWith('vless://')) throw new Error('必须以 vless:// 开头');
     let rest = link.slice('vless://'.length);
     let remark = '';
@@ -346,7 +379,16 @@ function showToast(msg){
     }
     if (!/^\d+$/.test(port)) throw new Error('端口必须是数字');
     const params = new URLSearchParams(query);
-    return { uuid, host, port, params, remark };
+    return {
+      proto: 'vless',
+      uuid,
+      host,
+      port,
+      params,
+      remark,
+      // raw params for rebuild
+      rawParams: params
+    };
   }
 
   function buildVless({uuid, host, port, params, remark}){
@@ -357,20 +399,93 @@ function showToast(msg){
     return out;
   }
 
+  // ---------- VMESS parse / build ----------
+  function parseVmess(link){
+    link = (link || '').trim();
+    if (!link.toLowerCase().startsWith('vmess://')) throw new Error('必须以 vmess:// 开头');
+    const b64 = link.slice('vmess://'.length).trim();
+    if (!b64) throw new Error('vmess 链接内容为空');
+    let jsonStr;
+    try {
+      jsonStr = b64Decode(b64);
+    } catch (e) {
+      throw new Error('Base64 解码失败');
+    }
+    let obj;
+    try {
+      obj = JSON.parse(jsonStr);
+    } catch (e) {
+      throw new Error('JSON 解析失败，不是合法的 vmess 配置');
+    }
+    if (!obj.id) throw new Error('缺少 id（UUID）');
+    if (!obj.add) throw new Error('缺少 add（地址）');
+    const port = String(obj.port || '443');
+    if (!/^\d+$/.test(port)) throw new Error('端口必须是数字');
+    return {
+      proto: 'vmess',
+      uuid: obj.id,
+      host: obj.add,
+      port,
+      remark: obj.ps || '',
+      // keep the whole object for rebuild
+      raw: obj
+    };
+  }
+
+  function buildVmess(baseObj, {host, port, remark}){
+    // shallow clone so we don't mutate original
+    const obj = Object.assign({}, baseObj);
+    obj.add = host;
+    obj.port = String(port);
+    obj.ps = remark || '';
+    // ensure common fields exist as strings (some clients are picky)
+    if (obj.v === undefined) obj.v = '2';
+    if (obj.aid === undefined) obj.aid = '0';
+    if (obj.scy === undefined) obj.scy = 'auto';
+    const json = JSON.stringify(obj);
+    // keep pretty format similar to common generators (optional, but matches example style)
+    // many clients accept compact; we use compact for smaller links
+    return 'vmess://' + b64Encode(json);
+  }
+
+  // ---------- Unified parse ----------
+  function parseLink(link){
+    link = (link || '').trim();
+    if (!link) throw new Error('请输入 vless 或 vmess 链接');
+    const lower = link.toLowerCase();
+    if (lower.startsWith('vless://')) return parseVless(link);
+    if (lower.startsWith('vmess://')) return parseVmess(link);
+    throw new Error('必须以 vless:// 或 vmess:// 开头');
+  }
+
   function refreshParsedPreview(){
     try {
-      parsedBase = parseVless(baseLinkEl.value);
+      parsedBase = parseLink(baseLinkEl.value);
+      const protoEl = document.getElementById('vf-p-proto');
+      protoEl.innerHTML = parsedBase.proto === 'vless'
+        ? '<span class="proto-badge proto-vless">VLESS</span>'
+        : '<span class="proto-badge proto-vmess">VMESS</span>';
       document.getElementById('vf-p-uuid').textContent = parsedBase.uuid;
       document.getElementById('vf-p-uuid').className = 'v';
       document.getElementById('vf-p-host').textContent = parsedBase.host;
       document.getElementById('vf-p-port').textContent = parsedBase.port;
-      document.getElementById('vf-p-security').textContent = parsedBase.params.get('security') || '(未设置)';
-      document.getElementById('vf-p-type').textContent = parsedBase.params.get('type') || '(未设置)';
+
+      if (parsedBase.proto === 'vless'){
+        document.getElementById('vf-p-security').textContent = parsedBase.params.get('security') || '(未设置)';
+        document.getElementById('vf-p-type').textContent = parsedBase.params.get('type') || '(未设置)';
+      } else {
+        const r = parsedBase.raw;
+        const sec = r.tls || r.security || '(未设置)';
+        const net = r.net || '(未设置)';
+        document.getElementById('vf-p-security').textContent = sec;
+        document.getElementById('vf-p-type').textContent = net;
+      }
       document.getElementById('vf-p-remark').textContent = parsedBase.remark || '(无)';
       parsedBox.classList.add('show');
     } catch (e){
       parsedBase = null;
       parsedBox.classList.add('show');
+      document.getElementById('vf-p-proto').textContent = '-';
       document.getElementById('vf-p-uuid').textContent = e.message;
       document.getElementById('vf-p-uuid').className = 'v err';
       ['vf-p-host','vf-p-port','vf-p-security','vf-p-type','vf-p-remark'].forEach(id=>{
@@ -417,7 +532,7 @@ function showToast(msg){
   function generate(){
     let base;
     try {
-      base = parseVless(baseLinkEl.value);
+      base = parseLink(baseLinkEl.value);
     } catch (e){
       refreshParsedPreview();
       showToast('❌ 基础链接错误：' + e.message);
@@ -445,31 +560,53 @@ function showToast(msg){
       showToast('请至少输入一个优选 IP / 域名');
       return;
     }
+
     const results = entries.map((entry, i) => {
-      const params = new URLSearchParams(base.params.toString());
       const port = forcePort || entry.port || base.port;
-      const host = entry.host;
-      if (optSni){
-        const security = (params.get('security') || '').toLowerCase();
-        if ((security === 'tls' || security === 'reality') && !params.get('sni')){
-          params.set('sni', base.host);
-        }
-      }
-      if (optHost){
-        const type = (params.get('type') || '').toLowerCase();
-        if (['ws','httpupgrade','http','h2'].includes(type) && !params.get('host')){
-          params.set('host', base.host);
-        }
-      }
-      const displayHost = host.replace(/^\[|\]$/g, '');
-      const name = base.remark || 'VLESS';
+      // strip brackets for display name, keep them for actual host if IPv6
+      const displayHost = entry.host.replace(/^\[|\]$/g, '');
+      const name = base.remark || (base.proto === 'vless' ? 'VLESS' : 'VMESS');
       const remark = entry.remark || tpl
         .replaceAll('{name}', name)
         .replaceAll('{ip}', displayHost)
         .replaceAll('{port}', port)
         .replaceAll('{index}', String(i + 1));
-      return buildVless({ uuid: base.uuid, host, port, params, remark });
+
+      if (base.proto === 'vless'){
+        const params = new URLSearchParams(base.params.toString());
+        if (optSni){
+          const security = (params.get('security') || '').toLowerCase();
+          if ((security === 'tls' || security === 'reality') && !params.get('sni')){
+            params.set('sni', base.host);
+          }
+        }
+        if (optHost){
+          const type = (params.get('type') || '').toLowerCase();
+          if (['ws','httpupgrade','http','h2'].includes(type) && !params.get('host')){
+            params.set('host', base.host);
+          }
+        }
+        return buildVless({ uuid: base.uuid, host: entry.host, port, params, remark });
+      } else {
+        // VMESS
+        const obj = Object.assign({}, base.raw);
+        // auto-fill sni / host if options enabled and fields empty
+        if (optSni){
+          const tls = (obj.tls || '').toLowerCase();
+          if ((tls === 'tls' || tls === 'reality') && !obj.sni){
+            obj.sni = base.host;
+          }
+        }
+        if (optHost){
+          const net = (obj.net || '').toLowerCase();
+          if (['ws','http','h2','httpupgrade'].includes(net) && !obj.host){
+            obj.host = base.host;
+          }
+        }
+        return buildVmess(obj, { host: entry.host, port, remark });
+      }
     });
+
     outputEl.value = results.join('\n');
     outCount.innerHTML = `共生成 <b>${results.length}</b> 条节点`;
     countBadge.innerHTML = `共生成 <b>${results.length}</b> 条节点`;
@@ -502,7 +639,7 @@ function showToast(msg){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'vless-nodes.txt';
+    a.download = 'nodes.txt';
     a.click();
     URL.revokeObjectURL(url);
   });
