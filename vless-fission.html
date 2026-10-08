@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proxy Toolkit · VLESS 裂变</title>
+<style>
+  :root{
+    --bg: #0a0e12;
+    --panel: #11161c;
+    --panel-alt: #151c24;
+    --border: #212b34;
+    --text: #dce4ea;
+    --muted: #7e8b96;
+    --accent: #4fd8c4;
+    --accent-dim: #2c6f66;
+    --accent-2: #e8a944;
+    --danger: #e8617a;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --blue: #60a5fa;
+    --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+    --sans: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(79,216,196,0.06), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(232,169,68,0.05), transparent 35%);
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 80px;}
+
+  header{display:flex;align-items:center;gap:20px;margin-bottom:8px;}
+  .branch-icon{flex:none;}
+  h1{
+    font-family:var(--mono);
+    font-size:24px;
+    letter-spacing:0.5px;
+    margin:0;
+    font-weight:700;
+  }
+  h1 .dim{color:var(--muted);font-weight:500;}
+  .subtitle{color:var(--muted);font-size:13.5px;margin:6px 0 0 0;line-height:1.6;}
+  .scanline{
+    height:1px;
+    margin:20px 0 24px;
+    background:linear-gradient(90deg, transparent, var(--accent-dim) 15%, var(--border) 50%, var(--accent-dim) 85%, transparent);
+    position:relative;
+    overflow:hidden;
+  }
+  .scanline::after{
+    content:'';
+    position:absolute;top:0;left:-30%;width:30%;height:100%;
+    background:linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation:scan 3.5s ease-in-out infinite;
+  }
+  @keyframes scan{
+    0%{left:-30%;}
+    50%{left:100%;}
+    100%{left:100%;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .scanline::after{animation:none;display:none;}
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:20px 22px 22px;
+  }
+  .panel h2{
+    font-family:var(--mono);
+    font-size:12.5px;
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+    color:var(--accent);
+    margin:0 0 4px 0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel h2 .tag{
+    background:var(--panel-alt);
+    color:var(--muted);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:1px 6px;
+    font-size:10.5px;
+    letter-spacing:0.5px;
+  }
+  .hint{color:var(--muted);font-size:12px;margin:0 0 12px 0;line-height:1.6;}
+
+  textarea, input[type=text], select{
+    width:100%;
+    background:var(--panel-alt);
+    border:1px solid var(--border);
+    border-radius:7px;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:12.5px;
+    padding:11px 12px;
+    resize:vertical;
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  textarea::placeholder, input::placeholder{color:#4a5560;}
+  textarea:focus, input:focus, select:focus{
+    border-color:var(--accent-dim);
+    box-shadow:0 0 0 3px rgba(79,216,196,0.08);
+  }
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:860px){.grid{grid-template-columns:1fr;}}
+
+  .opts{margin-top:16px;display:flex;flex-direction:column;gap:10px;}
+  .opt-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .opt-row label.check{
+    display:flex;align-items:center;gap:7px;
+    font-size:12.5px;color:var(--text);cursor:pointer;user-select:none;
+  }
+  .opt-row label.check input{accent-color:var(--accent);width:14px;height:14px;}
+  .opt-row .field-label{font-size:12px;color:var(--muted);flex:none;}
+  .opt-row input[type=text]{flex:1;min-width:120px;padding:7px 10px;font-size:12px;}
+  .tpl-vars{color:var(--muted);font-size:11px;margin-top:4px;}
+  .tpl-vars code{color:var(--accent-2);font-family:var(--mono);}
+
+  .actions{display:flex;gap:12px;align-items:center;margin:22px 0 0;flex-wrap:wrap;}
+  button, .btn{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:13.5px;
+    border-radius:7px;
+    border:1px solid transparent;
+    padding:11px 22px;
+    cursor:pointer;
+    transition:transform .1s ease, opacity .15s ease, background .15s ease;
+    appearance:none;
+  }
+  button:active, .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--accent);color:#06201c;border:none;}
+  .btn-primary:hover{opacity:0.9;}
+  .btn-primary:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
+  .btn-secondary{background:transparent;border-color:var(--border);color:var(--text);}
+  .btn-secondary:hover{border-color:var(--accent-dim);color:var(--accent);}
+  .count-badge{font-family:var(--mono);color:var(--muted);font-size:12.5px;}
+  .count-badge b{color:var(--accent);}
+
+  .output-panel{margin-top:22px;}
+  #vf-output{
+    width:100%;height:280px;
+    background:var(--panel-alt);
+    border:1px solid var(--border);
+    border-radius:7px;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:12px;
+    line-height:1.7;
+    padding:14px;
+    resize:vertical;
+    outline:none;
+  }
+  .output-footer{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:10px;flex-wrap:wrap;gap:10px;
+  }
+
+  .toast{
+    position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--panel);border:1px solid var(--accent-dim);color:var(--accent);
+    font-family:var(--mono);font-size:12.5px;padding:10px 18px;border-radius:8px;
+    opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;
+    z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  footer.page-footer{margin-top:40px;color:var(--muted);font-size:11.5px;text-align:center;line-height:1.8;}
+
+  .parsed{
+    margin-top:14px;
+    border-top:1px dashed var(--border);
+    padding-top:12px;
+    font-family:var(--mono);
+    font-size:12px;
+    display:none;
+  }
+  .parsed.show{display:block;}
+  .parsed .row{display:flex;gap:8px;padding:3px 0;}
+  .parsed .k{color:var(--muted);min-width:76px;flex:none;}
+  .parsed .v{color:var(--text);word-break:break-all;}
+  .parsed .err{color:var(--danger);}
+
+  code{background:#1a2538;padding:1px 6px;border-radius:4px;font-size:0.85em;font-family:var(--mono);}
+
+  @media (max-width:640px){
+    .actions button{flex:1;justify-content:center;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <svg class="branch-icon" width="46" height="46" viewBox="0 0 46 46" fill="none">
+      <circle cx="8" cy="23" r="4" fill="#4fd8c4"/>
+      <path d="M12 23 C20 23, 20 9, 30 9" stroke="#2c6f66" stroke-width="1.6" fill="none"/>
+      <path d="M12 23 C20 23, 20 23, 30 23" stroke="#2c6f66" stroke-width="1.6" fill="none"/>
+      <path d="M12 23 C20 23, 20 37, 30 37" stroke="#2c6f66" stroke-width="1.6" fill="none"/>
+      <circle cx="33" cy="9" r="3" fill="#e8a944"/>
+      <circle cx="33" cy="23" r="3" fill="#e8a944"/>
+      <circle cx="33" cy="37" r="3" fill="#e8a944"/>
+    </svg>
+    <div>
+      <h1>VLESS <span class="dim">裂变</span></h1>
+      <p class="subtitle">保留 UUID 与加密参数，批量替换连接地址与端口 · 纯前端本地运行</p>
+    </div>
+  </header>
+
+  <div class="scanline"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>基础节点 <span class="tag">01 · 输入</span></h2>
+      <p class="hint">粘贴一条完整的 vless:// 链接，工具会保留其中的 UUID、加密参数（security / sni / type / path / host 等），只替换连接地址与端口。</p>
+      <textarea id="vf-baseLink" placeholder="vless://uuid@原始域名:443?encryption=none&security=tls&sni=example.com&type=ws&host=example.com&path=%2F#原始备注" style="height:70px;"></textarea>
+      <div id="vf-parsed" class="parsed">
+        <div class="row"><span class="k">UUID</span><span class="v" id="vf-p-uuid">-</span></div>
+        <div class="row"><span class="k">原始地址</span><span class="v" id="vf-p-host">-</span></div>
+        <div class="row"><span class="k">原始端口</span><span class="v" id="vf-p-port">-</span></div>
+        <div class="row"><span class="k">安全层</span><span class="v" id="vf-p-security">-</span></div>
+        <div class="row"><span class="k">传输方式</span><span class="v" id="vf-p-type">-</span></div>
+        <div class="row"><span class="k">原始备注</span><span class="v" id="vf-p-remark">-</span></div>
+      </div>
+      <div class="opts">
+        <div class="opt-row">
+          <label class="check"><input type="checkbox" id="vf-optSni" checked> TLS/Reality 缺少 sni 时，自动补充为原始地址</label>
+        </div>
+        <div class="opt-row">
+          <label class="check"><input type="checkbox" id="vf-optHost" checked> WS/HTTP 缺少 host 头时，自动补充为原始地址</label>
+        </div>
+        <div class="opt-row">
+          <span class="field-label">备注模板</span>
+          <input type="text" id="vf-remarkTpl" value="{name}-{index}-{ip}">
+        </div>
+        <div class="tpl-vars">可用变量：<code>{name}</code> 原始备注 · <code>{ip}</code> 优选地址 · <code>{port}</code> 端口 · <code>{index}</code> 序号。列表中某行已用 <code>#备注</code> 自定义时，优先使用该备注。</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>优选地址列表 <span class="tag">02 · 输入</span></h2>
+      <p class="hint">每行一个，支持 IP 或域名，可选携带端口 / 备注。留空端口则沿用基础节点的原始端口。</p>
+      <textarea id="vf-ipList" placeholder="104.16.0.1
+104.16.0.2:2053
+cf.example.com
+cf.example.com:8443#香港优选
+[2606:4700::1]:443" style="height:190px;"></textarea>
+      <div class="opts">
+        <div class="opt-row">
+          <span class="field-label">强制端口（留空则按上方规则）</span>
+          <input type="text" id="vf-forcePort" placeholder="例如 443，留空表示不强制">
+        </div>
+        <div class="opt-row">
+          <label class="check"><input type="checkbox" id="vf-optDedup" checked> 自动去除空行 / 重复地址</label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn-primary" id="vf-genBtn">生成节点</button>
+    <button class="btn-secondary" id="vf-clearBtn">清空</button>
+    <span class="count-badge" id="vf-countBadge"></span>
+  </div>
+  <div class="panel output-panel">
+    <h2>生成结果 <span class="tag">03 · 输出</span></h2>
+    <textarea id="vf-output" placeholder="生成的 vless 节点将显示在这里，每行一条…" readonly></textarea>
+    <div class="output-footer">
+      <span class="count-badge" id="vf-outCount"></span>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-secondary" id="vf-copyBtn">复制全部</button>
+        <button class="btn-secondary" id="vf-downloadBtn">下载 .txt</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    纯前端本地处理 · 链接内容不会发送到任何服务器 · 使用前请确认合法合规
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+(function(){
+  const baseLinkEl = document.getElementById('vf-baseLink');
+  const parsedBox = document.getElementById('vf-parsed');
+  const ipListEl = document.getElementById('vf-ipList');
+  const outputEl = document.getElementById('vf-output');
+  const countBadge = document.getElementById('vf-countBadge');
+  const outCount = document.getElementById('vf-outCount');
+  let parsedBase = null;
+
+  function parseVless(link){
+    link = (link || '').trim();
+    if (!link) throw new Error('请输入 vless 链接');
+    if (!link.toLowerCase().startsWith('vless://')) throw new Error('必须以 vless:// 开头');
+    let rest = link.slice('vless://'.length);
+    let remark = '';
+    const hashIdx = rest.indexOf('#');
+    if (hashIdx >= 0){
+      remark = decodeURIComponent(rest.slice(hashIdx + 1));
+      rest = rest.slice(0, hashIdx);
+    }
+    let query = '';
+    const qIdx = rest.indexOf('?');
+    if (qIdx >= 0){
+      query = rest.slice(qIdx + 1);
+      rest = rest.slice(0, qIdx);
+    }
+    const atIdx = rest.lastIndexOf('@');
+    if (atIdx < 0) throw new Error('缺少 UUID（找不到 @ 分隔符）');
+    const uuid = rest.slice(0, atIdx);
+    if (!uuid) throw new Error('UUID 不能为空');
+    let hostport = rest.slice(atIdx + 1);
+    if (!hostport) throw new Error('缺少地址和端口');
+    let host, port;
+    if (hostport.startsWith('[')){
+      const endB = hostport.indexOf(']');
+      if (endB < 0) throw new Error('IPv6 地址格式错误');
+      host = hostport.slice(0, endB + 1);
+      const portPart = hostport.slice(endB + 2);
+      port = portPart || '443';
+    } else {
+      const idx = hostport.lastIndexOf(':');
+      if (idx < 0) throw new Error('缺少端口');
+      host = hostport.slice(0, idx);
+      port = hostport.slice(idx + 1);
+    }
+    if (!/^\d+$/.test(port)) throw new Error('端口必须是数字');
+    const params = new URLSearchParams(query);
+    return { uuid, host, port, params, remark };
+  }
+
+  function buildVless({uuid, host, port, params, remark}){
+    const query = params.toString();
+    let out = `vless://${uuid}@${host}:${port}`;
+    if (query) out += `?${query}`;
+    if (remark) out += `#${encodeURIComponent(remark)}`;
+    return out;
+  }
+
+  function refreshParsedPreview(){
+    try {
+      parsedBase = parseVless(baseLinkEl.value);
+      document.getElementById('vf-p-uuid').textContent = parsedBase.uuid;
+      document.getElementById('vf-p-uuid').className = 'v';
+      document.getElementById('vf-p-host').textContent = parsedBase.host;
+      document.getElementById('vf-p-port').textContent = parsedBase.port;
+      document.getElementById('vf-p-security').textContent = parsedBase.params.get('security') || '(未设置)';
+      document.getElementById('vf-p-type').textContent = parsedBase.params.get('type') || '(未设置)';
+      document.getElementById('vf-p-remark').textContent = parsedBase.remark || '(无)';
+      parsedBox.classList.add('show');
+    } catch (e){
+      parsedBase = null;
+      parsedBox.classList.add('show');
+      document.getElementById('vf-p-uuid').textContent = e.message;
+      document.getElementById('vf-p-uuid').className = 'v err';
+      ['vf-p-host','vf-p-port','vf-p-security','vf-p-type','vf-p-remark'].forEach(id=>{
+        document.getElementById(id).textContent = '-';
+      });
+    }
+  }
+
+  baseLinkEl.addEventListener('input', () => {
+    if (baseLinkEl.value.trim()) refreshParsedPreview();
+    else parsedBox.classList.remove('show');
+  });
+
+  function parseLine(line){
+    line = line.trim();
+    if (!line) return null;
+    if (line.startsWith('#') || line.startsWith('//')) return null;
+    let remark = '';
+    const hashIdx = line.indexOf('#');
+    if (hashIdx >= 0){
+      remark = line.slice(hashIdx + 1).trim();
+      line = line.slice(0, hashIdx).trim();
+    }
+    if (!line) return null;
+    let host, port = null;
+    if (line.startsWith('[')){
+      const endB = line.indexOf(']');
+      if (endB < 0) throw new Error(`IPv6 格式错误: ${line}`);
+      host = line.slice(0, endB + 1);
+      const portPart = line.slice(endB + 2);
+      if (portPart) port = portPart;
+    } else {
+      const idx = line.lastIndexOf(':');
+      if (idx >= 0 && /^\d+$/.test(line.slice(idx + 1))){
+        host = line.slice(0, idx);
+        port = line.slice(idx + 1);
+      } else {
+        host = line;
+      }
+    }
+    return { host, port, remark };
+  }
+
+  function generate(){
+    let base;
+    try {
+      base = parseVless(baseLinkEl.value);
+    } catch (e){
+      refreshParsedPreview();
+      showToast('❌ 基础链接错误：' + e.message);
+      return;
+    }
+    const rawLines = ipListEl.value.split('\n');
+    const optDedup = document.getElementById('vf-optDedup').checked;
+    const optSni = document.getElementById('vf-optSni').checked;
+    const optHost = document.getElementById('vf-optHost').checked;
+    const forcePort = document.getElementById('vf-forcePort').value.trim();
+    const tpl = document.getElementById('vf-remarkTpl').value || '{name}-{index}-{ip}';
+    let entries = [];
+    const seen = new Set();
+    for (const raw of rawLines){
+      let entry;
+      try { entry = parseLine(raw); }
+      catch (e){ showToast('❌ ' + e.message); return; }
+      if (!entry) continue;
+      const key = entry.host + ':' + (entry.port || '');
+      if (optDedup && seen.has(key)) continue;
+      seen.add(key);
+      entries.push(entry);
+    }
+    if (!entries.length){
+      showToast('请至少输入一个优选 IP / 域名');
+      return;
+    }
+    const results = entries.map((entry, i) => {
+      const params = new URLSearchParams(base.params.toString());
+      const port = forcePort || entry.port || base.port;
+      const host = entry.host;
+      if (optSni){
+        const security = (params.get('security') || '').toLowerCase();
+        if ((security === 'tls' || security === 'reality') && !params.get('sni')){
+          params.set('sni', base.host);
+        }
+      }
+      if (optHost){
+        const type = (params.get('type') || '').toLowerCase();
+        if (['ws','httpupgrade','http','h2'].includes(type) && !params.get('host')){
+          params.set('host', base.host);
+        }
+      }
+      const displayHost = host.replace(/^\[|\]$/g, '');
+      const name = base.remark || 'VLESS';
+      const remark = entry.remark || tpl
+        .replaceAll('{name}', name)
+        .replaceAll('{ip}', displayHost)
+        .replaceAll('{port}', port)
+        .replaceAll('{index}', String(i + 1));
+      return buildVless({ uuid: base.uuid, host, port, params, remark });
+    });
+    outputEl.value = results.join('\n');
+    outCount.innerHTML = `共生成 <b>${results.length}</b> 条节点`;
+    countBadge.innerHTML = `共生成 <b>${results.length}</b> 条节点`;
+    showToast('✅ 已生成 ' + results.length + ' 条节点');
+  }
+
+  document.getElementById('vf-genBtn').addEventListener('click', generate);
+  document.getElementById('vf-clearBtn').addEventListener('click', () => {
+    baseLinkEl.value = '';
+    ipListEl.value = '';
+    outputEl.value = '';
+    parsedBox.classList.remove('show');
+    countBadge.textContent = '';
+    outCount.textContent = '';
+  });
+  document.getElementById('vf-copyBtn').addEventListener('click', async () => {
+    if (!outputEl.value){ showToast('还没有生成结果'); return; }
+    try {
+      await navigator.clipboard.writeText(outputEl.value);
+      showToast('📋 已复制全部节点');
+    } catch (e){
+      outputEl.select();
+      document.execCommand('copy');
+      showToast('📋 已复制全部节点');
+    }
+  });
+  document.getElementById('vf-downloadBtn').addEventListener('click', () => {
+    if (!outputEl.value){ showToast('还没有生成结果'); return; }
+    const blob = new Blob([outputEl.value], {type: 'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vless-nodes.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>
