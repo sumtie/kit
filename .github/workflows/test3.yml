@@ -70,6 +70,9 @@ jobs:
         if: ${{ env.commit }}
         working-directory: TVBoxOSC
         run: |
+          # 移除源仓库中Release目录下的全部apk文件
+          rm -f release/*.apk
+
           # 修正 autosize 依赖包
           sed -i 's#me\.jessyan:autosize#com.github.JessYanCoding:AndroidAutoSize#g' app/build.gradle
           sed -i '14a\        maven { url "https://jitpack.io" }' settings.gradle
