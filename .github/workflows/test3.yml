@@ -74,13 +74,13 @@ jobs:
           sed -i 's#me\.jessyan:autosize#com.github.JessYanCoding:AndroidAutoSize#g' app/build.gradle
           
           # 自定义替换applicationId包名，输入不为空就执行替换
-#          if [[ -n "${{ inputs.packageId }}" ]]; then
-#              echo "===== 开始替换包名为: ${{ inputs.packageId }} ====="
-#              sed -i "s#applicationId\s*'.*'#applicationId '${{ inputs.packageId }}'#g" app/build.gradle
-#              echo "替换后applicationId行内容："
-#              grep "applicationId" app/build.gradle
-#              echo "===== 包名替换完成 ====="
-#          fi
+          if [[ -n "${{ inputs.packageId }}" ]]; then
+              echo "===== 开始替换包名为: ${{ inputs.packageId }} ====="
+              sed -i "s#applicationId\s*'.*'#applicationId '${{ inputs.packageId }}'#g" app/build.gradle
+              echo "替换后applicationId行内容："
+              grep "applicationId" app/build.gradle
+              echo "===== 包名替换完成 ====="
+          fi
           
           if [[ "${{ inputs.remove_mobile }}" == "true" ]]; then
             echo "=== 移除 mobile 版打包构建 ==="
