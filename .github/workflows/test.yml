@@ -71,7 +71,7 @@ jobs:
           # 自定义替换applicationId包名，输入不为空就执行替换
           if [[ -n "${{ inputs.packageId }}" ]]; then
               echo "===== 开始替换包名为: ${{ inputs.packageId }} ====="
-              sed -i "s#applicationId\s*'.*'#applicationId '${{ inputs.packageId }}'#g" app/build.gradle
+              sed -i -E "s|(applicationId\s+)([\"'])[^\"']*([\"'])|applicationId \"${{ github.event.inputs.packageId }}\"|" app/build.gradle
               echo "替换后applicationId行内容："
               grep "applicationId" app/build.gradle
               echo "===== 包名替换完成 ====="
