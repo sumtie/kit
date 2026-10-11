@@ -35,8 +35,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - userName: q215613905
-            repoName: TVBoxOS
+          - userName: zhanglyt
+            repoName: BearTV
             branchName: main
     steps:
       - name: Checkout
