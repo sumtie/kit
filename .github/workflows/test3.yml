@@ -16,7 +16,7 @@ on:
       packageId:
         description: "自定义APK包名(留空使用原包名，示例:app.fm.beartv)"
         required: false
-        default: ""
+        default: "app.fm.beartv"
       remove_mobile:
         description: '是否移除 mobile 版打包构建'
         required: false
@@ -77,7 +77,7 @@ jobs:
           # 自定义替换applicationId包名，输入不为空就执行替换
           if [[ -n "${{ inputs.packageId }}" ]]; then
               echo "===== 开始替换包名为: ${{ inputs.packageId }} ====="
-              sed -i "s#applicationId\s*'.*'#applicationId '${{ inputs.packageId }}'#g" app/build.gradle
+              sed -i -E "s|(applicationId\s+)([\"'])[^\"']*([\"'])|applicationId \"${{ github.event.inputs.packageId }}\"|" app/build.gradle
               echo "替换后applicationId行内容："
               grep "applicationId" app/build.gradle
               echo "===== 包名替换完成 ====="
@@ -162,14 +162,8 @@ jobs:
         run: |
           rm -rf apk/
           mkdir -p apk/
-          for file in `find ~ -name "*release*.apk" -print`; do
-            base=$(basename "$file")
-            if [[ "$base" == TVBox_* ]]; then
-              new_base=$(echo "$base" | sed "s/release/${{ matrix.userName }}_${{ env.tag }}/")
-            else
-              new_base="TVBox_${{ matrix.userName }}_${{ env.tag }}.apk"
-            fi
-            mv "$file" "apk/$new_base"
+          for file in $(find ~ -name "*.apk"); do
+            mv "$file" apk/
           done
           mv sourceCode-${{ env.commitS }}.* apk/
 
