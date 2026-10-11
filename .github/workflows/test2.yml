@@ -97,9 +97,7 @@ jobs:
         run: |
           if [[ -n "${{ inputs.packageId }}" ]]; then
               echo "===== 开始替换包名为: ${{ inputs.packageId }} ====="
-              OLD_ID="com.fongmi.android.tv"
-              NEW_ID="${{ inputs.packageId }}"
-              sed -i "s#applicationId[[:space:]]*\"$OLD_ID\"#applicationId \"$NEW_ID\"#g" app/build.gradle
+              sed -i -E "s|(applicationId\s+)([\"'])[^\"']*([\"'])|applicationId \"${{ github.event.inputs.packageId }}\"|" app/build.gradle
               echo "替换后applicationId行内容："
               grep "applicationId" app/build.gradle
               echo "===== 包名替换完成 ====="
