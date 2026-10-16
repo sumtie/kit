@@ -247,7 +247,7 @@ hy2://password@host:443?insecure=1&sni=example.com&obfs=salamander&obfs-password
     <div class="options">
       <label class="check"><input type="checkbox" id="mc-optSkipCert" /> 跳过证书验证 (skip-cert-verify)</label>
       <label class="check"><input type="checkbox" id="mc-optUdp" checked /> 启用 UDP</label>
-      <label class="check"><input type="checkbox" id="mc-optWrap" checked /> 输出完整 proxies 列表</label>
+      <label class="check"><input type="checkbox" id="mc-optWrap" checked /> 关闭完整配置时输出精简配置</label>
       <label class="check"><input type="checkbox" id="mc-optFingerprint" /> 添加 client-fingerprint: chrome</label>
       <label class="check"><input type="checkbox" id="mc-optForceEch" /> 强制开启 ECH（无 config 时走 DNS 自动发现）</label>
       <label class="check"><input type="checkbox" id="mc-optFullConfig" checked /> 输出完整配置（写入 mihomoConfig.yaml 的 proxies）</label>
@@ -273,7 +273,7 @@ hy2://password@host:443?insecure=1&sni=example.com&obfs=salamander&obfs-password
   <div class="panel" style="margin-top:16px;">
     <h2>Mihomo 输出 <span class="tag">YAML</span></h2>
     <textarea id="mc-output" readonly placeholder="转换结果将显示在这里…" style="min-height:280px;white-space:pre;"></textarea>
-    <p class="hint" style="margin-top:8px;">勾选「输出完整配置」时，会把节点写入内置 <code>mihomoConfig.yaml</code> 的 <code>proxies:</code> 段（保留原有直连节点与其余规则/策略组）。仅勾选「输出完整 proxies 列表」时只输出 proxies 块。VMess 支持标准 Base64 JSON；VLESS XHTTP 会保留 <code>xhttp-opts</code> 及 X-Padding；ECH 参数会写入 <code>ech-opts</code>；TUIC / Hysteria2 为 QUIC，无需 WS。</p>
+    <p class="hint" style="margin-top:8px;">勾选「输出完整配置」时，会把节点写入内置 <code>mihomoConfig.yaml</code> 的 <code>proxies:</code> 段。关闭完整配置且勾选「精简配置」时，输出可直接使用的最小配置：端口 / 日志、直连节点、转换节点、全节点选择组与一条 MATCH 规则。两者都关闭时只输出节点块。VMess 支持标准 Base64 JSON；VLESS XHTTP 会保留 <code>xhttp-opts</code> 及 X-Padding；ECH 参数会写入 <code>ech-opts</code>；TUIC / Hysteria2 为 QUIC，无需 WS。</p>
   </div>
 
   <footer class="page-footer">
@@ -1304,7 +1304,34 @@ rule-providers:
       text = MIHOMO_CONFIG_TEMPLATE.replace("# {{CUSTOM_PROXIES}}", injected.trimEnd() ? injected : "");
       text = text.replace(/\n# \{\{CUSTOM_PROXIES\}\}\n/, "\n");
     } else if (opts.wrap) {
-      text = "proxies:\n" + proxyBlocks.map((p) => indentBlock(p.split("\n"), 2)).join("\n");
+      const injected = proxyBlocks
+        .map((p) => indentBlock(p.split("\n"), 2))
+        .join("\n");
+      text = [
+        "#  ---------说明---------",
+        "mixed-port: 7890",
+        "mode: rule",
+        "log-level: info",
+        "ipv6: true",
+        "",
+        "",
+        "proxies:",
+        "  - name: \"直连\"",
+        "    type: direct",
+        "    udp: true",
+        injected,
+        "",
+        "",
+        "proxy-groups:",
+        "  - name: \"🚀 节点选择\"",
+        "    type: select",
+        "    include-all-proxies: true",
+        "",
+        "",
+        "rules:",
+        "  - MATCH,🚀 节点选择",
+        "",
+      ].join("\n");
     } else {
       text = proxyBlocks.join("\n");
     }
@@ -1315,7 +1342,9 @@ rule-providers:
     } else {
       showMsg(opts.fullConfig
         ? `成功转换 ${proxies.length} 条节点，已写入完整 mihomo 配置`
-        : `成功转换 ${proxies.length} 条节点`, "ok");
+        : opts.wrap
+          ? `成功转换 ${proxies.length} 条节点，已写入精简配置`
+          : `成功转换 ${proxies.length} 条节点`, "ok");
     }
   }
 
@@ -1341,7 +1370,9 @@ rule-providers:
     const blob = new Blob([output.value + "\n"], { type: "text/yaml;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = output.dataset.fullConfig === "1" ? "mihomoConfig.yaml" : "mihomo-proxies.yaml";
+    a.download = output.dataset.fullConfig === "1"
+      ? "mihomoConfig.yaml"
+      : (output.value.startsWith("#  ---------说明---------") ? "mihomo-lite.yaml" : "mihomo-proxies.yaml");
     a.click();
     URL.revokeObjectURL(a.href);
     showMsg("已开始下载", "ok");
