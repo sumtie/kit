@@ -145,6 +145,9 @@
   .btn-primary:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
   .btn-secondary{background:transparent;border-color:var(--border);color:var(--text);}
   .btn-secondary:hover{border-color:var(--accent-dim);color:var(--accent);}
+  .btn-secondary:disabled{opacity:0.55;cursor:not-allowed;}
+  .import-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;}
+  .import-note{color:var(--muted);font-size:12px;line-height:1.5;}
   .count-badge{font-family:var(--mono);color:var(--muted);font-size:12.5px;}
   .count-badge b{color:var(--accent);}
 
@@ -266,6 +269,10 @@ vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogImVnIiwNCiAgImFkZCI6ICJzaG9waWZ5LmNvbSIs
     <div class="panel">
       <h2>优选地址列表 <span class="tag">02 · 输入</span></h2>
       <p class="hint">每行一个，支持 IP 或域名，可选携带端口 / 备注。留空端口则沿用基础节点的原始端口。</p>
+      <div class="import-row">
+        <button type="button" class="btn-secondary" id="vf-importCf">导入 CF 域名</button>
+        <span class="import-note" id="vf-importNote">读取同目录 cf_domains.txt，追加到下方列表，已有地址会跳过。</span>
+      </div>
       <textarea id="vf-ipList" placeholder="104.16.0.1
 104.16.0.2:2053
 cf.example.com
@@ -613,6 +620,78 @@ function showToast(msg){
     showToast('✅ 已生成 ' + results.length + ' 条节点');
   }
 
+  const importBtn = document.getElementById('vf-importCf');
+  const importNote = document.getElementById('vf-importNote');
+  const defaultImportNote = '读取同目录 cf_domains.txt，追加到下方列表，已有地址会跳过。';
+
+  function addressKey(line){
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) return null;
+    const hashIdx = trimmed.indexOf('#');
+    const core = (hashIdx >= 0 ? trimmed.slice(0, hashIdx) : trimmed).trim().toLowerCase();
+    return core || null;
+  }
+  function normalizeDomainList(text){
+    return text.replace(/^\uFEFF/, '').split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#') && !l.startsWith('//'));
+  }
+  function mergeAddressLists(current, incomingText){
+    const seen = new Set();
+    for (const line of current.split(/\r?\n/)){
+      const key = addressKey(line);
+      if (key) seen.add(key);
+    }
+    const addedLines = [];
+    let skipped = 0;
+    for (const line of normalizeDomainList(incomingText)){
+      const key = addressKey(line);
+      if (!key || seen.has(key)){ skipped++; continue; }
+      seen.add(key);
+      addedLines.push(line);
+    }
+    if (!addedLines.length) return { text: current, added: 0, skipped };
+    const base = current.replace(/\s+$/, '');
+    const text = base ? base + '\n' + addedLines.join('\n') : addedLines.join('\n');
+    return { text, added: addedLines.length, skipped };
+  }
+
+  importBtn.addEventListener('click', async () => {
+    importBtn.disabled = true;
+    const prev = importBtn.textContent;
+    importBtn.textContent = '读取中…';
+    try {
+      const res = await fetch('cf_domains.txt', { cache: 'no-cache' });
+      if (!res.ok) throw new Error('读取 cf_domains.txt 失败');
+      const text = await res.text();
+      if (!text.trim() || text.trimStart().startsWith('<')) throw new Error('没有读到域名列表');
+      const merged = mergeAddressLists(ipListEl.value, text);
+      const total = normalizeDomainList(text).length;
+      if (!total){ showToast('域名文件是空的'); return; }
+      if (!merged.added){
+        importNote.textContent = '这些域名已经在列表里。';
+        showToast('这些域名已在列表中');
+        return;
+      }
+      ipListEl.value = merged.text;
+      const skipNote = merged.skipped ? '，跳过 ' + merged.skipped + ' 个重复' : '';
+      importNote.textContent = '已从 cf_domains.txt 追加 ' + merged.added + ' 个域名' + skipNote + '。';
+      showToast('已追加 ' + merged.added + ' 个域名' + skipNote);
+      importBtn.textContent = '导入 CF 域名 (' + total + ')';
+    } catch (e){
+      const message = (e && e.message) || '读取失败';
+      importNote.textContent = message;
+      showToast(message);
+    } finally {
+      importBtn.disabled = false;
+      if (importBtn.textContent === '读取中…') importBtn.textContent = prev;
+    }
+  });
+
+  fetch('cf_domains.txt').then(r => r.ok ? r.text() : '').then(text => {
+    if (!text || text.trimStart().startsWith('<')) return;
+    const n = normalizeDomainList(text).length;
+    if (n) importBtn.textContent = '导入 CF 域名 (' + n + ')';
+  }).catch(() => {});
+
   document.getElementById('vf-genBtn').addEventListener('click', generate);
   document.getElementById('vf-clearBtn').addEventListener('click', () => {
     baseLinkEl.value = '';
@@ -621,6 +700,7 @@ function showToast(msg){
     parsedBox.classList.remove('show');
     countBadge.textContent = '';
     outCount.textContent = '';
+    importNote.textContent = defaultImportNote;
   });
   document.getElementById('vf-copyBtn').addEventListener('click', async () => {
     if (!outputEl.value){ showToast('还没有生成结果'); return; }
