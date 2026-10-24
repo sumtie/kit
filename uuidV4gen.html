@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UUID v4</title>
+<meta name="description" content="一次生成多条 UUID v4，点按即可复制。全部在浏览器本地完成。">
+<meta name="theme-color" content="#0a0e12">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0E12'/%3E%3Cpath d='M10.5 7.75V16.25H22.25V24.75' stroke='%234FD8C4' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='10.5' cy='7.75' r='3.35' fill='%23E8A944'/%3E%3Ccircle cx='10.5' cy='16.25' r='3.35' fill='%234FD8C4'/%3E%3Ccircle cx='22.25' cy='16.25' r='3.35' fill='%234FD8C4'/%3E%3Ccircle cx='22.25' cy='24.75' r='3.35' fill='%23E8A944'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --color-bg: #0a0e12;
+  --color-panel: #11161c;
+  --color-panel-alt: #151c24;
+  --color-border: #212b34;
+  --color-fg: #dce4ea;
+  --color-muted: #7e8b96;
+  --color-accent: #4fd8c4;
+  --color-accent-dim: #2c6f66;
+  --color-accent-ink: #06201c;
+  --color-gold: #e8a944;
+  --color-gold-dim: #8a6528;
+  --color-danger: #e8617a;
+  --color-ok: #4ade80;
+  --color-placeholder: #4a5560;
+  --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+  --radius-panel: 10px;
+  --radius-control: 7px;
+}
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 42%),
+      radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--color-gold) 6%, transparent), transparent 36%);
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 28%, transparent);
+    color: var(--color-fg);
+  }
+
+.app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.mast {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.mark {
+  flex: none;
+}
+
+.mast h1 {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  letter-spacing: 0.5px;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mast h1 .dim {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.subtitle {
+  color: var(--color-muted);
+  font-size: 13.5px;
+  margin: 6px 0 0;
+  line-height: 1.6;
+  max-width: 46rem;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.proto-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.proto-vless {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-dim);
+}
+
+.proto-vmess {
+  background: color-mix(in srgb, var(--color-gold) 15%, transparent);
+  color: var(--color-gold);
+  border: 1px solid var(--color-gold-dim);
+}
+
+.scanline {
+  height: 1px;
+  margin: 20px 0 24px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent-dim) 15%,
+    var(--color-border) 50%,
+    var(--color-accent-dim) 85%,
+    transparent
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -30%;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  animation: scan 3.5s ease-in-out infinite;
+}
+
+@keyframes scan {
+  0% {
+    left: -30%;
+  }
+  50% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 20px;
+}
+
+.panel {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  padding: 20px 22px 22px;
+}
+
+.panel h2 {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-accent);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.panel h2 .tag {
+  background: var(--color-panel-alt);
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  text-transform: none;
+}
+
+.hint {
+  color: var(--color-muted);
+  font-size: 12px;
+  margin: 0 0 14px;
+  line-height: 1.6;
+}
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepper button,
+.icon-btn {
+  appearance: none;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-panel-alt);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.stepper button:hover:not(:disabled),
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+.stepper button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.count-input {
+  width: 92px;
+  height: 44px;
+  text-align: center;
+  background: var(--color-panel-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  outline: none;
+}
+
+.count-input:focus,
+.probe-input:focus {
+  border-color: var(--color-accent-dim);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.count-cap {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.chip {
+  appearance: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chip[aria-pressed="true"],
+.chip:hover {
+  border-color: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+.chip[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.opt-block {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.seg {
+  display: flex;
+  background: var(--color-panel-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 3px;
+  gap: 2px;
+}
+
+.seg button {
+  appearance: none;
+  flex: 1;
+  min-height: 40px;
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 5px;
+  font-family: var(--font-sans);
+}
+
+.seg button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-fg);
+  cursor: pointer;
+  user-select: none;
+  min-height: 28px;
+}
+
+.check input {
+  accent-color: var(--color-accent);
+  width: 15px;
+  height: 15px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+button.btn {
+  appearance: none;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  min-height: 44px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.1s ease, opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+button.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  border: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  background: var(--color-border);
+  color: var(--color-muted);
+  border-color: transparent;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.btn-secondary {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-fg);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+.btn-secondary.is-on {
+  border-color: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+.hero-plate {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  background: var(--color-panel-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 16px 16px 14px;
+  color: var(--color-fg);
+  display: block;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.hero-plate:hover:not(:disabled) {
+  border-color: var(--color-accent-dim);
+}
+
+.hero-plate:disabled {
+  cursor: default;
+}
+
+.hero-plate.flash {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-panel-alt));
+}
+
+.hero-kicker {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+}
+
+.hero-uuid {
+  font-family: var(--font-mono);
+  font-size: clamp(15px, 2vw, 20px);
+  line-height: 1.5;
+  word-break: break-all;
+  font-weight: 500;
+}
+
+.hero-uuid .ver {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.hero-uuid .var {
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+.hero-uuid .dash {
+  color: var(--color-muted);
+}
+
+.hero-empty {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--color-muted);
+}
+
+.legend b {
+  font-weight: 600;
+}
+
+.legend .dot-ver {
+  color: var(--color-accent);
+}
+
+.legend .dot-var {
+  color: var(--color-gold);
+}
+
+.hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.parsed {
+  margin-top: 14px;
+  border-top: 1px dashed var(--color-border);
+  padding-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.parsed .row {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  line-height: 1.5;
+}
+
+.parsed .k {
+  color: var(--color-muted);
+  min-width: 76px;
+  flex: none;
+}
+
+.parsed .v {
+  color: var(--color-fg);
+  word-break: break-all;
+}
+
+.parsed .v.err {
+  color: var(--color-danger);
+}
+
+.parsed .v.ok {
+  color: var(--color-ok);
+}
+
+.parsed .v.warn {
+  color: var(--color-gold);
+}
+
+.probe {
+  margin-top: 16px;
+}
+
+.probe-input {
+  width: 100%;
+  background: var(--color-panel-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 11px 12px;
+  outline: none;
+}
+
+.probe-input::placeholder {
+  color: var(--color-placeholder);
+}
+
+.output-panel {
+  margin-top: 20px;
+}
+
+.list-scroll {
+  margin-top: 4px;
+  max-height: 440px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-panel-alt);
+}
+
+.uuid-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--color-border);
+  min-height: 52px;
+}
+
+.uuid-row:last-child {
+  border-bottom: none;
+}
+
+.uuid-row:hover {
+  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+}
+
+.uuid-row.is-selected {
+  background: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+
+.uuid-row.flash {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+.row-main {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 4px 6px 12px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  border-radius: 6px;
+}
+
+.uuid-row .idx {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.uuid-row .val {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.row-copy {
+  appearance: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel);
+  color: var(--color-fg);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.row-copy:hover,
+.uuid-row.is-selected .row-copy {
+  border-color: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+.empty,
+.sk-wrap {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.sk-row {
+  height: 14px;
+  margin: 16px 16px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-border),
+    color-mix(in srgb, var(--color-accent) 25%, var(--color-border)),
+    var(--color-border)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.sk-row:nth-child(2) {
+  width: 86%;
+}
+.sk-row:nth-child(3) {
+  width: 72%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.output-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.count-badge {
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  font-size: 12.5px;
+}
+
+.count-badge b {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kbd-hint {
+  margin-top: 8px;
+  color: var(--color-muted);
+  font-size: 11.5px;
+}
+
+.kbd-hint kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-alt);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--color-fg);
+}
+
+.page-footer {
+  margin-top: 36px;
+  color: var(--color-muted);
+  font-size: 11.5px;
+  text-align: center;
+  line-height: 1.8;
+}
+
+.toast {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--color-panel);
+  border: 1px solid var(--color-accent-dim);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 50;
+  max-width: min(92vw, 420px);
+  text-align: center;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanline::after,
+  .sk-row {
+    animation: none;
+  }
+
+  button.btn,
+  .toast,
+  .hero-plate,
+  .uuid-row {
+    transition: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: 22px 16px 72px;
+  }
+
+  .mast {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .mast h1 {
+    font-size: 20px;
+  }
+
+  .panel {
+    padding: 16px;
+  }
+
+  .actions .btn,
+  .hero-actions .btn,
+  .footer-actions .btn {
+    flex: 1;
+  }
+
+  .uuid-row .row-copy {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .kbd-hint {
+    display: none;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="mast">
+    <svg class="mark" width="46" height="46" viewBox="0 0 46 46" fill="none" aria-hidden="true">
+      <rect x="1" y="1" width="44" height="44" rx="10" stroke="var(--color-border)" fill="var(--color-panel)"></rect>
+      <path d="M14 16 H32 V32 H14 Z" stroke="var(--color-accent-dim)" stroke-width="1.4"></path>
+      <circle cx="14" cy="16" r="3" fill="var(--color-accent)"></circle>
+      <circle cx="32" cy="16" r="3" fill="var(--color-accent-dim)"></circle>
+      <circle cx="14" cy="32" r="3" fill="var(--color-accent-dim)"></circle>
+      <circle cx="32" cy="32" r="3" fill="var(--color-gold)"></circle>
+    </svg>
+    <div>
+      <h1>UUID v4 <span class="dim">生成</span></h1>
+      <p class="subtitle">一次铺开多条，点按即复制。版本位与变体位按 RFC 4122 固定，其余 122 位来自浏览器的加密随机源，不会离开这台设备。</p>
+      <div class="badges">
+        <span class="proto-badge proto-vless">VERSION 4</span>
+        <span class="proto-badge proto-vmess">RFC 4122</span>
+      </div>
+    </div>
+  </header>
+  <div class="scanline"></div>
+  <div class="grid-2">
+    <section class="panel">
+      <h2>批量 <span class="tag">01 · 数量</span></h2>
+      <p class="hint">选定条数和写出的样子。切换大小写、连字符或包装不会重摇随机数，只改复制出去的文本。</p>
+      <label class="field-label" for="uuid-count">一次生成</label>
+      <div class="stepper">
+        <button type="button" id="btn-minus" aria-label="减少"></button>
+        <input id="uuid-count" class="count-input" inputmode="numeric" aria-label="生成条数" value="10">
+        <button type="button" id="btn-plus" aria-label="增加"></button>
+        <span class="count-cap">1 – 200</span>
+      </div>
+      <div class="presets" id="presets" role="group" aria-label="常用条数">
+        <button type="button" class="chip" data-n="1">1</button>
+        <button type="button" class="chip" data-n="5">5</button>
+        <button type="button" class="chip" data-n="10">10</button>
+        <button type="button" class="chip" data-n="20">20</button>
+        <button type="button" class="chip" data-n="50">50</button>
+        <button type="button" class="chip" data-n="100">100</button>
+      </div>
+      <div class="opt-block">
+        <div>
+          <span class="field-label">大小写</span>
+          <div class="seg" id="case-seg" role="group" aria-label="大小写">
+            <button type="button" data-value="lower" aria-pressed="true">小写</button>
+            <button type="button" data-value="upper" aria-pressed="false">大写</button>
+          </div>
+        </div>
+        <div>
+          <span class="field-label">包装</span>
+          <div class="seg" id="wrap-seg" role="group" aria-label="包装">
+            <button type="button" data-value="none" aria-pressed="true">无</button>
+            <button type="button" data-value="braces" aria-pressed="false">{ }</button>
+            <button type="button" data-value="urn" aria-pressed="false">URN</button>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="opt-hyphens" checked> 保留连字符</label>
+        <label class="check"><input type="checkbox" id="opt-auto"> 生成后自动复制本次结果</label>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="btn-gen">生成一批</button>
+        <button type="button" class="btn btn-secondary" id="btn-append">追加</button>
+        <button type="button" class="btn btn-secondary" id="btn-clear">清空</button>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>快捷复制 <span class="tag">02 · 单条</span></h2>
+      <p class="hint">点下面这一条就进剪贴板。青字是版本位，金字是变体位。</p>
+      <button type="button" class="hero-plate" id="hero">
+        <span class="hero-kicker"><span id="hero-kicker-l">空</span><span id="hero-kicker-r">等待生成</span></span>
+        <span class="hero-empty" id="hero-body">生成后显示在这里</span>
+      </button>
+      <div class="legend">
+        <span><b class="dot-ver">青</b> 版本位，固定为 4</span>
+        <span><b class="dot-var">金</b> 变体位，RFC 4122</span>
+      </div>
+      <div class="hero-actions">
+        <button type="button" class="btn btn-primary" id="btn-copy-one">复制这条</button>
+        <button type="button" class="btn btn-secondary" id="btn-quick">换一条并复制</button>
+      </div>
+      <div class="parsed" id="inspect" hidden></div>
+      <div class="probe">
+        <label class="field-label" for="uuid-probe">粘贴校验</label>
+        <input id="uuid-probe" class="probe-input" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="粘贴一条 UUID、花括号或 urn:uuid:…">
+        <div class="parsed" id="probe-out" hidden></div>
+      </div>
+    </section>
+  </div>
+  <section class="panel output-panel">
+    <h2>生成结果 <span class="tag">03 · 列表</span></h2>
+    <p class="hint">点一行即复制该条的当前格式。左边序号对应快捷区里正在看的那一条。</p>
+    <div class="list-scroll" id="list"></div>
+    <div class="output-footer">
+      <span class="count-badge" id="count-badge" aria-live="polite"></span>
+      <div class="footer-actions">
+        <button type="button" class="btn btn-secondary" id="btn-copy-all">复制全部</button>
+        <button type="button" class="btn btn-secondary" id="btn-download">下载 .txt</button>
+      </div>
+    </div>
+    <p class="kbd-hint">快捷键 <kbd>G</kbd> 生成一批 · <kbd>Q</kbd> 换一条并复制 · <kbd>C</kbd> 复制全部</p>
+  </section>
+  <footer class="page-footer">Web Crypto 本地生成 · 链接与随机数都不会发到服务器 · UUID 适合做标识，不要拿来当密码</footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function () {
+  var MIN_COUNT = 1;
+  var MAX_COUNT = 200;
+  var MAX_LIST = 400;
+  var PRESETS = [1, 5, 10, 20, 50, 100];
+  var STORAGE_KEY = "uuid-v4-prefs";
+  var HEX = "0123456789abcdef";
+  var UUID_HYPHEN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  var UUID_COMPACT = /^[0-9a-f]{32}$/i;
+
+  var svg = {
+    minus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>',
+    plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    refresh: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>',
+    trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>',
+    copy: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    copySm: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    check: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    checkSm: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    download: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>'
+  };
+
+  var state = {
+    count: 10,
+    upper: false,
+    hyphens: true,
+    wrap: "none",
+    autoCopy: false,
+    items: [],
+    selected: 0,
+    probe: "",
+    flashKey: null
+  };
+  var toastTimer = 0;
+  var flashTimer = 0;
+
+  var el = {
+    count: document.getElementById("uuid-count"),
+    minus: document.getElementById("btn-minus"),
+    plus: document.getElementById("btn-plus"),
+    presets: document.getElementById("presets"),
+    hyphens: document.getElementById("opt-hyphens"),
+    auto: document.getElementById("opt-auto"),
+    clear: document.getElementById("btn-clear"),
+    hero: document.getElementById("hero"),
+    heroKickerL: document.getElementById("hero-kicker-l"),
+    heroKickerR: document.getElementById("hero-kicker-r"),
+    heroBody: document.getElementById("hero-body"),
+    copyOne: document.getElementById("btn-copy-one"),
+    list: document.getElementById("list"),
+    countBadge: document.getElementById("count-badge"),
+    copyAll: document.getElementById("btn-copy-all"),
+    download: document.getElementById("btn-download"),
+    probe: document.getElementById("uuid-probe"),
+    probeOut: document.getElementById("probe-out"),
+    inspect: document.getElementById("inspect"),
+    toast: document.getElementById("toast"),
+    caseSeg: document.getElementById("case-seg"),
+    wrapSeg: document.getElementById("wrap-seg")
+  };
+
+  function clampCount(n) {
+    if (!isFinite(n)) return 10;
+    return Math.min(MAX_COUNT, Math.max(MIN_COUNT, Math.round(n)));
+  }
+
+  function uuidV4() {
+    var bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    var hex = "";
+    for (var i = 0; i < bytes.length; i++) hex += HEX[bytes[i] >> 4] + HEX[bytes[i] & 0x0f];
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+  }
+
+  function makeBatch(count) {
+    var n = clampCount(count);
+    var items = [];
+    for (var i = 0; i < n; i++) items.push(uuidV4());
+    return items;
+  }
+
+  function formatUuid(raw) {
+    var body = state.hyphens ? raw : raw.replace(/-/g, "");
+    body = state.upper ? body.toUpperCase() : body.toLowerCase();
+    if (state.wrap === "braces") return "{" + body + "}";
+    if (state.wrap === "urn") return "urn:uuid:" + body;
+    return body;
+  }
+
+  function inspectUuid(raw) {
+    var hex = raw.replace(/-/g, "").toLowerCase();
+    var version = parseInt(hex.charAt(12) || "0", 16);
+    var nibble = parseInt(hex.charAt(16) || "0", 16);
+    var variant = "未知";
+    var detail = "无法判断变体";
+    if ((nibble & 8) === 0) {
+      variant = "NCS";
+      detail = "最高位为 0，Apollo NCS 兼容";
+    } else if ((nibble & 12) === 8) {
+      variant = "RFC 4122";
+      detail = "高两位为 10，标准变体";
+    } else if ((nibble & 14) === 12) {
+      variant = "Microsoft";
+      detail = "高三位为 110，向后兼容";
+    } else {
+      variant = "保留";
+      detail = "高三位为 111，未来保留";
+    }
+    return { version: version, variant: variant, detail: detail };
+  }
+
+  function parseUuidInput(input) {
+    var s = input.trim();
+    if (!s) return null;
+    s = s.replace(/^urn:uuid:/i, "");
+    if (s.charAt(0) === "{" && s.charAt(s.length - 1) === "}") s = s.slice(1, -1).trim();
+    if (UUID_HYPHEN.test(s)) return s.toLowerCase();
+    if (UUID_COMPACT.test(s)) {
+      var h = s.toLowerCase();
+      return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+    }
+    return null;
+  }
+
+  function showToast(message) {
+    el.toast.textContent = message;
+    el.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.classList.remove("show"); }, 1600);
+  }
+
+  function pulse(key) {
+    state.flashKey = null;
+    renderFlash();
+    requestAnimationFrame(function () {
+      state.flashKey = key;
+      renderFlash();
+    });
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () {
+      state.flashKey = null;
+      renderFlash();
+    }, 700);
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(fallback);
+    }
+    fallback();
+    return Promise.resolve();
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+  }
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        count: state.count,
+        upper: state.upper,
+        hyphens: state.hyphens,
+        wrap: state.wrap,
+        autoCopy: state.autoCopy
+      }));
+    } catch (e) {}
+  }
+
+  function loadPrefs() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      state.count = clampCount(typeof data.count === "number" ? data.count : 10);
+      state.upper = Boolean(data.upper);
+      state.hyphens = data.hyphens !== false;
+      state.wrap = data.wrap === "braces" || data.wrap === "urn" ? data.wrap : "none";
+      state.autoCopy = Boolean(data.autoCopy);
+    } catch (e) {}
+  }
+
+  function currentRaw() {
+    if (!state.items.length) return "";
+    var i = state.selected;
+    if (i < 0 || i >= state.items.length) i = 0;
+    return state.items[i];
+  }
+
+  function glyphHTML(text) {
+    var offset = state.wrap === "braces" ? 1 : state.wrap === "urn" ? "urn:uuid:".length : 0;
+    var ver = (state.hyphens ? 14 : 12) + offset;
+    var variant = (state.hyphens ? 19 : 16) + offset;
+    var html = "";
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i);
+      var cls = i === ver ? "ver" : i === variant ? "var" : ch === "-" ? "dash" : "";
+      html += '<span class="' + cls + '">' + escapeHTML(ch) + "</span>";
+    }
+    return html;
+  }
+
+  function escapeHTML(s) {
+    return s.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+  }
+
+  function setPressed(group, value) {
+    var buttons = group.querySelectorAll("button");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].setAttribute("aria-pressed", buttons[i].getAttribute("data-value") === value ? "true" : "false");
+    }
+  }
+
+  function renderControls() {
+    if (document.activeElement !== el.count) el.count.value = String(state.count);
+    el.minus.disabled = state.count <= MIN_COUNT;
+    el.plus.disabled = state.count >= MAX_COUNT;
+    el.hyphens.checked = state.hyphens;
+    el.auto.checked = state.autoCopy;
+    setPressed(el.caseSeg, state.upper ? "upper" : "lower");
+    setPressed(el.wrapSeg, state.wrap);
+    var chips = el.presets.querySelectorAll("button");
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].setAttribute("aria-pressed", Number(chips[i].getAttribute("data-n")) === state.count ? "true" : "false");
+    }
+    var empty = state.items.length === 0;
+    el.clear.disabled = empty;
+    el.copyAll.disabled = empty;
+    el.download.disabled = empty;
+    el.copyOne.disabled = empty;
+    el.hero.disabled = empty;
+  }
+
+  function renderHero() {
+    var raw = currentRaw();
+    var copied = state.flashKey === "hero" || state.flashKey === "row:" + state.selected;
+    el.hero.classList.toggle("flash", copied);
+    if (!raw) {
+      el.heroKickerL.textContent = "空";
+      el.heroKickerR.textContent = "等待生成";
+      el.heroBody.className = "hero-empty";
+      el.heroBody.textContent = "生成后显示在这里";
+    } else {
+      el.heroKickerL.textContent = "第 " + (Math.min(state.selected, state.items.length - 1) + 1) + " 条";
+      el.heroKickerR.textContent = "点击复制";
+      el.heroBody.className = "hero-uuid";
+      el.heroBody.innerHTML = glyphHTML(formatUuid(raw));
+    }
+    el.copyOne.innerHTML = (copied ? svg.check : svg.copy) + (copied ? "已复制" : "复制这条");
+    var info = raw ? inspectUuid(raw) : null;
+    if (!info) {
+      el.inspect.hidden = true;
+      return;
+    }
+    el.inspect.hidden = false;
+    el.inspect.innerHTML = "";
+    addRow(el.inspect, "版本", info.version + " · 随机", info.version === 4 ? "ok" : "warn");
+    addRow(el.inspect, "变体", info.variant, "");
+    addRow(el.inspect, "说明", info.detail, "");
+    addRow(el.inspect, "随机位", "122 bit", "");
+  }
+
+  function addRow(parent, k, v, kind) {
+    var row = document.createElement("div");
+    row.className = "row";
+    var ks = document.createElement("span");
+    ks.className = "k";
+    ks.textContent = k;
+    var vs = document.createElement("span");
+    vs.className = "v" + (kind ? " " + kind : "");
+    vs.textContent = v;
+    row.appendChild(ks);
+    row.appendChild(vs);
+    parent.appendChild(row);
+  }
+
+  function renderList() {
+    el.list.textContent = "";
+    if (!state.items.length) {
+      var empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "列表是空的。生成一批，或换一条直接放进剪贴板。";
+      el.list.appendChild(empty);
+    } else {
+      for (var i = 0; i < state.items.length; i++) renderRow(i);
+    }
+    el.countBadge.textContent = "";
+    el.countBadge.appendChild(document.createTextNode("共 "));
+    var b = document.createElement("b");
+    b.textContent = String(state.items.length);
+    el.countBadge.appendChild(b);
+    el.countBadge.appendChild(document.createTextNode(" 条"));
+    var allOn = state.flashKey === "all";
+    el.copyAll.classList.toggle("is-on", allOn);
+    el.copyAll.innerHTML = (allOn ? svg.check : svg.copy) + "复制全部";
+  }
+
+  function renderRow(index) {
+    var raw = state.items[index];
+    var on = state.flashKey === "row:" + index;
+    var row = document.createElement("div");
+    row.className = "uuid-row" + (state.selected === index ? " is-selected" : "") + (on ? " flash" : "");
+    var main = document.createElement("button");
+    main.type = "button";
+    main.className = "row-main";
+    var idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(index + 1).padStart(2, "0");
+    var val = document.createElement("span");
+    val.className = "val";
+    val.textContent = formatUuid(raw);
+    main.appendChild(idx);
+    main.appendChild(val);
+    main.addEventListener("click", function () { selectAndCopy(index); });
+    var copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "row-copy";
+    copy.innerHTML = (on ? svg.checkSm : svg.copySm) + (on ? "已复制" : "复制");
+    copy.addEventListener("click", function () { selectAndCopy(index); });
+    row.appendChild(main);
+    row.appendChild(copy);
+    el.list.appendChild(row);
+  }
+
+  function renderFlash() {
+    renderHero();
+    renderList();
+    renderControls();
+  }
+
+  function renderProbe() {
+    var text = state.probe.trim();
+    el.probeOut.textContent = "";
+    if (!text) {
+      el.probeOut.hidden = true;
+      return;
+    }
+    el.probeOut.hidden = false;
+    var parsed = parseUuidInput(text);
+    if (!parsed) {
+      addRow(el.probeOut, "结果", "不是合法的 UUID", "err");
+      return;
+    }
+    var info = inspectUuid(parsed);
+    var ok = info.version === 4 && info.variant === "RFC 4122";
+    addRow(el.probeOut, "结果", ok ? "合法的 UUID v4" : "合法 UUID，但是版本 " + info.version + " / " + info.variant, ok ? "ok" : "warn");
+    addRow(el.probeOut, "标准形", parsed, "");
+  }
+
+  function render() {
+    renderControls();
+    renderHero();
+    renderList();
+    renderProbe();
+  }
+
+  function selectAndCopy(index) {
+    state.selected = index;
+    var raw = state.items[index];
+    copyText(formatUuid(raw)).then(function () {
+      pulse("row:" + index);
+      showToast("已复制 " + raw.slice(0, 8) + "…");
+    });
+  }
+
+  function copyMany(batch, label) {
+    if (!batch.length) {
+      showToast("还没有可复制的 UUID");
+      return Promise.resolve();
+    }
+    var text = batch.map(formatUuid).join("\n");
+    return copyText(text).then(function () {
+      pulse("all");
+      showToast(label);
+    });
+  }
+
+  function scrollTop() {
+    el.list.scrollTop = 0;
+  }
+
+  function generateReplace() {
+    state.items = makeBatch(state.count);
+    state.selected = 0;
+    scrollTop();
+    render();
+    if (state.autoCopy) copyMany(state.items, "已生成并复制 " + state.items.length + " 条");
+    else showToast("已生成 " + state.items.length + " 条");
+  }
+
+  function generateAppend() {
+    var room = MAX_LIST - state.items.length;
+    if (room <= 0) {
+      showToast("列表已满 " + MAX_LIST + " 条");
+      return;
+    }
+    var next = makeBatch(Math.min(state.count, room));
+    state.items = next.concat(state.items).slice(0, MAX_LIST);
+    state.selected = 0;
+    scrollTop();
+    render();
+    var capped = next.length < state.count;
+    if (state.autoCopy) {
+      copyMany(next, capped ? "已追加并复制 " + next.length + " 条，列表已满" : "已追加并复制 " + next.length + " 条");
+    } else {
+      showToast(capped ? "只追加了 " + next.length + " 条，列表已满" : "已追加 " + next.length + " 条");
+    }
+  }
+
+  function quickOne() {
+    var raw = uuidV4();
+    state.items = [raw].concat(state.items).slice(0, MAX_LIST);
+    state.selected = 0;
+    scrollTop();
+    render();
+    copyText(formatUuid(raw)).then(function () {
+      pulse("hero");
+      showToast("已复制 " + raw.slice(0, 8) + "…");
+    });
+  }
+
+  function downloadFile() {
+    if (!state.items.length) {
+      showToast("还没有可下载的 UUID");
+      return;
+    }
+    var blob = new Blob([state.items.map(formatUuid).join("\n")], { type: "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "uuid-v4.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("已下载 " + state.items.length + " 条");
+  }
+
+  el.minus.addEventListener("click", function () {
+    state.count = clampCount(state.count - 1);
+    savePrefs();
+    renderControls();
+  });
+  el.plus.addEventListener("click", function () {
+    state.count = clampCount(state.count + 1);
+    savePrefs();
+    renderControls();
+  });
+  el.count.addEventListener("input", function () {
+    var digits = el.count.value.replace(/\D/g, "");
+    if (!digits) return;
+    state.count = clampCount(Number(digits));
+    savePrefs();
+    renderControls();
+  });
+  el.presets.addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    state.count = clampCount(Number(btn.getAttribute("data-n")));
+    savePrefs();
+    renderControls();
+  });
+  el.caseSeg.addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    state.upper = btn.getAttribute("data-value") === "upper";
+    savePrefs();
+    render();
+  });
+  el.wrapSeg.addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    state.wrap = btn.getAttribute("data-value");
+    savePrefs();
+    render();
+  });
+  el.hyphens.addEventListener("change", function () {
+    state.hyphens = el.hyphens.checked;
+    savePrefs();
+    render();
+  });
+  el.auto.addEventListener("change", function () {
+    state.autoCopy = el.auto.checked;
+    savePrefs();
+  });
+  document.getElementById("btn-gen").addEventListener("click", generateReplace);
+  document.getElementById("btn-append").addEventListener("click", generateAppend);
+  el.clear.addEventListener("click", function () {
+    state.items = [];
+    state.selected = 0;
+    render();
+    showToast("已清空");
+  });
+  el.hero.addEventListener("click", function () {
+    var raw = currentRaw();
+    if (!raw) return;
+    copyText(formatUuid(raw)).then(function () {
+      pulse("hero");
+      showToast("已复制 " + raw.slice(0, 8) + "…");
+    });
+  });
+  el.copyOne.addEventListener("click", function () {
+    var raw = currentRaw();
+    if (!raw) return;
+    copyText(formatUuid(raw)).then(function () {
+      pulse("hero");
+      showToast("已复制 " + raw.slice(0, 8) + "…");
+    });
+  });
+  document.getElementById("btn-quick").addEventListener("click", quickOne);
+  el.copyAll.addEventListener("click", function () {
+    copyMany(state.items, "已复制全部 " + state.items.length + " 条");
+  });
+  el.download.addEventListener("click", downloadFile);
+  el.probe.addEventListener("input", function () {
+    state.probe = el.probe.value;
+    renderProbe();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    if (window.getSelection && window.getSelection().toString()) return;
+    var key = e.key.toLowerCase();
+    if (key === "g") { e.preventDefault(); generateReplace(); }
+    else if (key === "q") { e.preventDefault(); quickOne(); }
+    else if (key === "c") { e.preventDefault(); copyMany(state.items, "已复制全部 " + state.items.length + " 条"); }
+  });
+
+  loadPrefs();
+  state.items = makeBatch(state.count);
+  el.minus.innerHTML = svg.minus;
+  el.plus.innerHTML = svg.plus;
+  document.getElementById("btn-gen").innerHTML = svg.refresh + "生成一批";
+  el.clear.innerHTML = svg.trash + "清空";
+  document.getElementById("btn-download").innerHTML = svg.download + "下载 .txt";
+  render();
+})();
+
+</script>
+</body>
+</html>
