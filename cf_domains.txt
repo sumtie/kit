@@ -4,4 +4,3 @@ www.ntu.edu.sg
 img.css.sd
 www.ox.ac.uk
 w3.org
-www.galgamex.net
