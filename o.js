@@ -76,6 +76,12 @@ const prefixRules = [
   'RULE-SET,nvidia_cn,直连',
   'RULE-SET,apple_cn,直连',
   'RULE-SET,microsoft_cn,直连',
+
+  // 追加3条加速链接域名直连
+  'DOMAIN,fastly.jsdelivr.net,直连',
+  'DOMAIN,gcore.jsdelivr.net,直连',
+  'DOMAIN,cdn.jsdelivr.net,直连',
+
   'DOMAIN,fsend.cn,直连',
   'DOMAIN,international-gfe.download.nvidia.com,直连',
   'DOMAIN-SUFFIX,ctaiot.com,直连',
