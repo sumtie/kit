@@ -5,8 +5,8 @@ import os, re, sys, time, random, requests, subprocess,ctypes
 from seleniumbase import SB
 
 # 环境变量配置(可以直接私库在双引号里填写)
-EMAIL         = os.environ.get("EMAIL") or ""           # 邮箱必填，登录和通知使用
-PASSWORD      = os.environ.get("PASSWORD") or ""        # 主用密码登录方式, 失败时才使用,必须填写
+EMAIL         = os.environ.get("BOTHOST_EMAIL") or ""           # 邮箱必填，登录和通知使用
+PASSWORD      = os.environ.get("BOTHOST_PASSWORD") or ""        # 主用密码登录方式, 失败时才使用,必须填写
 TG_CHAT_ID    = os.environ.get("TG_CHAT_ID") or ""      # TG chat id,不填写不通知，需和bot token一起填写生效
 TG_BOT_TOKEN  = os.environ.get("TG_BOT_TOKEN") or ""    # TG bot token 
 
