@@ -36,8 +36,8 @@ jobs:
 
       - name: 🚀 运行续期脚本
         env:
-          EMAIL: ${{ secrets.BOTHOST_EMAIL }}
-          PASSWORD: ${{ secrets.BOTHOST_PASSWORD }}
+          BOTHOST_EMAIL: ${{ secrets.BOTHOST_EMAIL }}
+          BOTHOST_PASSWORD: ${{ secrets.BOTHOST_PASSWORD }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
