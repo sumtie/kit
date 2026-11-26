@@ -12,4 +12,6 @@ jellyfin.roddy.eu.cc
 vps.cheng2001.top
 w3.org
 www.ntu.edu.sg#南洋理工大学
+www.ox.ac.uk
+img.css.sd
 yapuyapu.com
